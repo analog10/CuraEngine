@@ -59,7 +59,9 @@ class Mesh : public SettingsBase // inherits settings
     //! The vertex_hash_map stores a index reference of each vertex for the hash of that location. Allows for quick retrieval of points with the same location.
     std::unordered_map<uint32_t, std::vector<uint32_t> > vertex_hash_map;
     AABB3D aabb;
+		Point3 preslice_offset;
 public:
+		std::string pre_slice_file;//!< file containing presliced content
     std::vector<MeshVertex> vertices;//!< list of all vertices in the mesh
     std::vector<MeshFace> faces; //!< list of all faces in the mesh
 
@@ -79,10 +81,22 @@ public:
     void offset(Point3 offset)
     {
         if (offset == Point3(0,0,0)) { return; }
-        for(MeshVertex& v : vertices)
-            v.p += offset;
+
+				if(pre_slice_file.length()){
+					preslice_offset = offset;
+				}
+				else{
+					for(MeshVertex& v : vertices)
+							v.p += offset;
+				}
         aabb.offset(offset);
     }
+
+
+    /*!
+		 * If pre_slice_file defined, then read min/max data from the file.
+		 */
+		bool ReadMinMax(void);
 
 private:
     int findIndexOfVertex(const Point3& v); //!< find index of vertex close to the given point, or create a new vertex and return its index.
