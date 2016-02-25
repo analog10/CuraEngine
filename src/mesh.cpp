@@ -1,3 +1,12 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <sys/mman.h>
+#include <tuple>
+#include <benejson/pull.hh>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "mesh.h"
 #include "utils/logoutput.h"
 
@@ -177,6 +186,76 @@ int Mesh::getFaceIdxWithPoints(int idx0, int idx1, int notFaceIdx)
     }
     if (bestIdx < 0) cura::logError("Couldn't find face connected to face %i.\n", notFaceIdx);
     return bestIdx;
+}
+
+using BNJ::PullParser;
+bool Mesh::ReadMinMax(){
+	if(pre_slice_file.length()){
+
+				int infd = open(pre_slice_file.c_str(), O_RDWR);
+				if(-1 == infd)
+					return false;
+
+				struct stat st;
+				if(fstat(infd, &st)){
+					fprintf(stderr, "fstat: %s\n", strerror(errno));
+					close(infd);
+					return false;
+				}
+
+				void* dest = 0;
+				uint8_t* buffer =
+					(uint8_t*)mmap(dest, st.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, infd, 0);
+
+				uint32_t stack[16];
+				PullParser parser(16, stack);
+
+				parser.Begin(buffer, st.st_size);
+
+				bool ret = true;
+				try{
+					parser.Pull();
+					BNJ::VerifyList(parser);
+
+					/* Get the min/max. */
+					std::tuple<double, double, double> inpt;
+					FPoint3 fpt;
+					Point3 pt;
+					parser.Pull();
+					BNJ::GetVerify(inpt, parser);
+					fpt.x = std::get<0>(inpt);
+					fpt.y = std::get<1>(inpt);
+					fpt.z = std::get<2>(inpt);
+					pt = fpt.toPoint3();
+					aabb.include(pt);
+
+					parser.Pull();
+					BNJ::GetVerify(inpt, parser);
+					fpt.x = std::get<0>(inpt);
+					fpt.y = std::get<1>(inpt);
+					fpt.z = std::get<2>(inpt);
+					pt = fpt.toPoint3();
+					aabb.include(pt);
+				}
+				catch(const std::exception& e){
+					/* didn't work out...not sure that Cura uses exceptions... */
+					ret = false;
+				}
+
+				if(munmap(buffer, st.st_size)){
+					fprintf(stderr, "munmap: %s\n", strerror(errno));
+					close(infd);
+					return ret;
+				}
+
+				if(close(infd)){
+					fprintf(stderr, "close: %s\n", strerror(errno));
+					return ret;
+				}
+
+				return ret;
+	}
+	return false;
 }
 
 }//namespace cura

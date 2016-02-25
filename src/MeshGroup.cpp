@@ -180,6 +180,15 @@ bool loadMeshIntoMeshGroup(MeshGroup* meshgroup, const char* filename, FMatrix3x
             return true;
         }
     }
+		else if(ext &&  (strcmp(ext, ".stack") == 0 || strcmp(ext, ".STACK") == 0)){
+			Mesh mesh = object_parent_settings ? Mesh(object_parent_settings) : Mesh(meshgroup);
+			mesh.pre_slice_file = filename;
+			bool ret = mesh.ReadMinMax();
+			if(ret)
+	      meshgroup->meshes.push_back(mesh);
+			return ret;
+		}
+
     return false;
 }
 

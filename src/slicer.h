@@ -145,7 +145,10 @@ public:
     
     Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool keepNoneClosed, bool extensiveStitching);
     
-    SlicerSegment project2D(Point3& p0, Point3& p1, Point3& p2, int32_t z) const
+    void dumpSegmentsToHTML(const char* filename);
+    
+private:
+    static SlicerSegment project2D(Point3& p0, Point3& p1, Point3& p2, int32_t z)
     {
         SlicerSegment seg;
         seg.start.X = p0.x + int64_t(p1.x - p0.x) * int64_t(z - p0.z) / int64_t(p1.z - p0.z);
@@ -154,8 +157,6 @@ public:
         seg.end.Y = p0.y + int64_t(p2.y - p0.y) * int64_t(z - p0.z) / int64_t(p2.z - p0.z);
         return seg;
     }
-    
-    void dumpSegmentsToHTML(const char* filename);
 };
 
 }//namespace cura
