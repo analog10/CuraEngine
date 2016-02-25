@@ -12,13 +12,13 @@ if (ENABLE_ARCUS)
 endif ()
 
 if(NOT ${CMAKE_VERSION} VERSION_LESS 3.1)
-    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD 14)
 else()
-    set(CMAKE_CXX_FLAGS "-std=c++11")
+    set(CMAKE_CXX_FLAGS "-std=c++14")
 endif()
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -stdlib=libc++")
 endif()
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
@@ -43,6 +43,7 @@ endif()
 include_directories(${CMAKE_CURRENT_BINARY_DIR} libs)
 
 add_library(clipper STATIC libs/clipper/clipper.cpp)
+add_library(benejson STATIC libs/benejson/benejson.c libs/benejson/pull.cpp)
 
 set(engine_SRCS # Except main.cpp.
     src/bridge.cpp
@@ -121,7 +122,7 @@ endif ()
 
 # Compiling CuraEngine itself.
 add_library(_CuraEngine ${engine_SRCS} ${engine_PB_SRCS}) #First compile all of CuraEngine as library, allowing this to be re-used for tests.
-target_link_libraries(_CuraEngine clipper)
+target_link_libraries(_CuraEngine clipper benejson)
 if (ENABLE_ARCUS)
     target_link_libraries(_CuraEngine Arcus)
 endif ()
