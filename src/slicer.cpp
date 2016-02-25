@@ -1,5 +1,12 @@
 /** Copyright (C) 2013 David Braam - Released under terms of the AGPLv3 License */
 #include <stdio.h>
+#include <stdint.h>
+#include <sys/mman.h>
+#include <tuple>
+#include <benejson/pull.hh>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <algorithm> // remove_if
 
@@ -9,6 +16,7 @@
 #include "slicer.h"
 #include "debug.h" // TODO remove
 
+using BNJ::PullParser;
 
 namespace cura {
     
@@ -451,12 +459,12 @@ void SlicerLayer::makePolygons(const Mesh* mesh, bool keep_none_closed, bool ext
     }
 }
 
-
 Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool keep_none_closed, bool extensive_stitching)
 : mesh(mesh)
 {
     assert(layer_count > 0);
 
+		fprintf(stderr, "LAYER COUNT %u\n", layer_count);
     layers.resize(layer_count);
     
     for(int32_t layer_nr = 0; layer_nr < layer_count; layer_nr++)
@@ -464,56 +472,175 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
         layers[layer_nr].z = initial + thickness * layer_nr;
     }
     
-    for(unsigned int mesh_idx = 0; mesh_idx < mesh->faces.size(); mesh_idx++)
-    {
-        MeshFace& face = mesh->faces[mesh_idx];
-        Point3 p0 = mesh->vertices[face.vertex_index[0]].p;
-        Point3 p1 = mesh->vertices[face.vertex_index[1]].p;
-        Point3 p2 = mesh->vertices[face.vertex_index[2]].p;
-        int32_t minZ = p0.z;
-        int32_t maxZ = p0.z;
-        if (p1.z < minZ) minZ = p1.z;
-        if (p2.z < minZ) minZ = p2.z;
-        if (p1.z > maxZ) maxZ = p1.z;
-        if (p2.z > maxZ) maxZ = p2.z;
-        int32_t layer_max = (maxZ - initial) / thickness;
-        for(int32_t layer_nr = (minZ - initial) / thickness; layer_nr <= layer_max; layer_nr++)
-        {
-            int32_t z = layer_nr * thickness + initial;
-            if (z < minZ) continue;
-            if (layer_nr < 0) continue;
-            
-            SlicerSegment s;
-            if (p0.z < z && p1.z >= z && p2.z >= z)
-                s = project2D(p0, p2, p1, z);
-            else if (p0.z > z && p1.z < z && p2.z < z)
-                s = project2D(p0, p1, p2, z);
+		if(0 == mesh->pre_slice_file.length()){
+			for(unsigned int mesh_idx = 0; mesh_idx < mesh->faces.size(); mesh_idx++)
+			{
+					MeshFace& face = mesh->faces[mesh_idx];
+					Point3 p0 = mesh->vertices[face.vertex_index[0]].p;
+					Point3 p1 = mesh->vertices[face.vertex_index[1]].p;
+					Point3 p2 = mesh->vertices[face.vertex_index[2]].p;
+					int32_t minZ = p0.z;
+					int32_t maxZ = p0.z;
+					if (p1.z < minZ) minZ = p1.z;
+					if (p2.z < minZ) minZ = p2.z;
+					if (p1.z > maxZ) maxZ = p1.z;
+					if (p2.z > maxZ) maxZ = p2.z;
+					int32_t layer_max = (maxZ - initial) / thickness;
+					for(int32_t layer_nr = (minZ - initial) / thickness; layer_nr <= layer_max; layer_nr++)
+					{
+							int32_t z = layer_nr * thickness + initial;
+							if (z < minZ) continue;
+							if (layer_nr < 0) continue;
+							
+							SlicerSegment s;
+							if (p0.z < z && p1.z >= z && p2.z >= z)
+									s = project2D(p0, p2, p1, z);
+							else if (p0.z > z && p1.z < z && p2.z < z)
+									s = project2D(p0, p1, p2, z);
 
-            else if (p1.z < z && p0.z >= z && p2.z >= z)
-                s = project2D(p1, p0, p2, z);
-            else if (p1.z > z && p0.z < z && p2.z < z)
-                s = project2D(p1, p2, p0, z);
+							else if (p1.z < z && p0.z >= z && p2.z >= z)
+									s = project2D(p1, p0, p2, z);
+							else if (p1.z > z && p0.z < z && p2.z < z)
+									s = project2D(p1, p2, p0, z);
 
-            else if (p2.z < z && p1.z >= z && p0.z >= z)
-                s = project2D(p2, p1, p0, z);
-            else if (p2.z > z && p1.z < z && p0.z < z)
-                s = project2D(p2, p0, p1, z);
-            else
-            {
-                //Not all cases create a segment, because a point of a face could create just a dot, and two touching faces
-                //  on the slice would create two segments
-                continue;
-            }
-            layers[layer_nr].face_idx_to_segment_idx.insert(std::make_pair(mesh_idx, layers[layer_nr].segments.size()));
-            s.faceIndex = mesh_idx;
-            s.addedToPolygon = false;
-            layers[layer_nr].segments.push_back(s);
-        }
-    }
-    for(unsigned int layer_nr=0; layer_nr<layers.size(); layer_nr++)
-    {
-        layers[layer_nr].makePolygons(mesh, keep_none_closed, extensive_stitching);
-    }
+							else if (p2.z < z && p1.z >= z && p0.z >= z)
+									s = project2D(p2, p1, p0, z);
+							else if (p2.z > z && p1.z < z && p0.z < z)
+									s = project2D(p2, p0, p1, z);
+							else
+							{
+									//Not all cases create a segment, because a point of a face could create just a dot, and two touching faces
+									//  on the slice would create two segments
+									continue;
+							}
+							layers[layer_nr].face_idx_to_segment_index.insert(std::make_pair(mesh_idx, layers[layer_nr].segmentList.size()));
+							s.faceIndex = mesh_idx;
+							s.addedToPolygon = false;
+							layers[layer_nr].segmentList.push_back(s);
+					}
+			}
+			for(unsigned int layer_nr=0; layer_nr<layers.size(); layer_nr++)
+			{
+					layers[layer_nr].makePolygons(mesh, keep_none_closed, extensive_stitching);
+			}
+		}
+		else{
+			/* Read slice data from the file.
+			 * The slice data is in ascending z order,
+			 * so we can just stream the data from the file.
+			 * The slices may not match up perfectly with the slicing specification,
+			 * but that is OK as we can do a nearest neighbor match. */
+
+			int infd = open(mesh->pre_slice_file.c_str(), O_RDWR);
+			if(-1 == infd)
+				return;
+
+			struct stat st;
+			if(fstat(infd, &st)){
+				fprintf(stderr, "fstat: %s\n", strerror(errno));
+				close(infd);
+				return;
+			}
+
+			void* dest = 0;
+			uint8_t* buffer =
+				(uint8_t*)mmap(dest, st.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, infd, 0);
+
+			uint32_t stack[16];
+			PullParser parser(16, stack);
+
+			parser.Begin(buffer, st.st_size);
+
+			try{
+				parser.Pull();
+				BNJ::VerifyList(parser);
+
+				/* Skip over min/max; already retrieved them. */
+				std::tuple<double, double, double> inpt;
+				parser.Pull();
+				BNJ::GetVerify(inpt, parser);
+				parser.Pull();
+				BNJ::GetVerify(inpt, parser);
+
+				unsigned cur_layer = 0;
+				while(BNJ::PullParser::ST_ASCEND_LIST != parser.Pull()){
+					if(cur_layer == layers.size())
+						break;
+
+					std::tuple<double,double> sinit;
+					BNJ::GetVerify(sinit, parser);
+
+					double cur_height = std::get<0>(sinit);
+					double cur_thickness = std::get<1>(sinit);
+
+					/* Read the boundary. */
+					std::tuple<double, double> pt2d;
+					{
+						parser.Pull();
+						BNJ::VerifyList(parser);
+
+						Polygon poly;
+						while(BNJ::PullParser::ST_ASCEND_LIST != parser.Pull()){
+							BNJ::GetVerify(pt2d, parser);
+							FPoint3 fp;
+							fp.x = std::get<0>(pt2d);
+							fp.y = std::get<1>(pt2d);
+							fp.z = 0;
+
+							Point3 p3 = fp.toPoint3();
+							Point p;
+							p.X = p3.x;
+							p.Y = p3.y;
+							poly.add(p);
+						}
+						layers[cur_layer].polygonList.add(poly);
+					}
+
+					/* Read the interior holes. */
+					parser.Pull();
+					BNJ::VerifyList(parser);
+					while(BNJ::PullParser::ST_ASCEND_LIST != parser.Pull()){
+						BNJ::VerifyList(parser);
+
+						Polygon poly;
+						while(BNJ::PullParser::ST_ASCEND_LIST != parser.Pull()){
+							BNJ::GetVerify(pt2d, parser);
+							FPoint3 fp;
+							fp.x = std::get<0>(pt2d);
+							fp.y = std::get<1>(pt2d);
+							fp.z = 0;
+
+							Point3 p3 = fp.toPoint3();
+							Point p;
+							p.X = p3.x;
+							p.Y = p3.y;
+							poly.add(p);
+						}
+						layers[cur_layer].polygonList.add(poly);
+					}
+					++cur_layer;
+				}
+
+				if(cur_layer < layers.size()){
+					/* This is a problem... */
+					exit(1);
+				}
+			}
+			catch(const std::exception& e){
+				/* didn't work out...not sure that Cura uses exceptions... */
+				fprintf(stderr, "ERROR %s\n", e.what());
+			}
+
+			if(munmap(buffer, st.st_size)){
+				fprintf(stderr, "munmap: %s\n", strerror(errno));
+				return;
+			}
+
+			if(close(infd)){
+				fprintf(stderr, "close: %s\n", strerror(errno));
+				return;
+			}
+		}
 }
 
 }//namespace cura
