@@ -17,7 +17,6 @@
 #include "debug.h" // TODO remove
 
 using BNJ::PullParser;
-
 namespace cura {
     
 int largest_neglected_gap_first_phase = MM2INT(0.01); //!< distance between two line segments regarded as connected
@@ -473,7 +472,7 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
     }
     
 		if(0 == mesh->pre_slice_file.length()){
-			for(unsigned int mesh_idx = 0; mesh_idx < mesh->faces.size(); mesh_idx++)
+    for(unsigned int mesh_idx = 0; mesh_idx < mesh->faces.size(); mesh_idx++)
 			{
 					MeshFace& face = mesh->faces[mesh_idx];
 					Point3 p0 = mesh->vertices[face.vertex_index[0]].p;
@@ -513,10 +512,10 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 									//  on the slice would create two segments
 									continue;
 							}
-							layers[layer_nr].face_idx_to_segment_index.insert(std::make_pair(mesh_idx, layers[layer_nr].segmentList.size()));
+							layers[layer_nr].face_idx_to_segment_idx.insert(std::make_pair(mesh_idx, layers[layer_nr].segments.size()));
 							s.faceIndex = mesh_idx;
 							s.addedToPolygon = false;
-							layers[layer_nr].segmentList.push_back(s);
+							layers[layer_nr].segments.push_back(s);
 					}
 			}
 			for(unsigned int layer_nr=0; layer_nr<layers.size(); layer_nr++)
