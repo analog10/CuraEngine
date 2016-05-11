@@ -1,0 +1,3 @@
+#!/bin/bash
+
+../build/CuraEngine slice -j prusa_i3_xl.json -s layer_height_0=0.3 -s layer_height=0.5 -s support_enable=false -e0 -l torture_preslice.stack > torture_preslice.gcode
