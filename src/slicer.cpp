@@ -7,8 +7,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+<<<<<<< HEAD
 
 #include <algorithm> // remove_if
+=======
+>>>>>>> 0cc0219e6ac92756fdf9c1f9dd3cf7d373b571d1
 
 #include "utils/gettime.h"
 #include "utils/logoutput.h"
@@ -462,7 +465,6 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 {
     assert(layer_count > 0);
 
-		fprintf(stderr, "INITIAL %i THICKNESS %i\n", initial, thickness);
 		fprintf(stderr, "LAYER COUNT %u\n", layer_count);
     layers.resize(layer_count);
     
@@ -573,7 +575,6 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 					double cur_thickness = std::get<1>(sinit);
 
 					cur_height += cur_thickness;
-
 					/* Read the boundary. */
 					std::tuple<double, double> pt2d;
 					{
@@ -630,7 +631,6 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 				}
 
 				if(cur_layer < layers.size()){
-					fprintf(stderr, "CUR LAYER IS %u, expected %u\n", cur_layer, layers.size());
     			layers.resize(cur_layer);
 				}
 			}
