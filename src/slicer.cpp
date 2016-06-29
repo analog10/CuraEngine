@@ -463,8 +463,6 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 {
     assert(layer_count > 0);
 
-		fprintf(stderr, "INITIAL %i THICKNESS %i\n", initial, thickness);
-		fprintf(stderr, "LAYER COUNT %u\n", layer_count);
     layers.resize(layer_count);
     
     for(int32_t layer_nr = 0; layer_nr < layer_count; layer_nr++)
@@ -574,7 +572,6 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 					double cur_thickness = std::get<1>(sinit);
 
 					cur_height += cur_thickness;
-
 					/* Read the boundary. */
 					std::tuple<double, double> pt2d;
 					{
@@ -631,7 +628,6 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 				}
 
 				if(cur_layer < layers.size()){
-					fprintf(stderr, "CUR LAYER IS %u, expected %u\n", cur_layer, layers.size());
     			layers.resize(cur_layer);
 				}
 			}
