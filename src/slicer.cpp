@@ -463,6 +463,7 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 {
     assert(layer_count > 0);
 
+		fprintf(stderr, "INITIAL %i THICKNESS %i\n", initial, thickness);
 		fprintf(stderr, "LAYER COUNT %u\n", layer_count);
     layers.resize(layer_count);
     
@@ -572,6 +573,8 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 					double cur_height = std::get<0>(sinit);
 					double cur_thickness = std::get<1>(sinit);
 
+					cur_height += cur_thickness;
+
 					/* Read the boundary. */
 					std::tuple<double, double> pt2d;
 					{
@@ -579,6 +582,7 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 						BNJ::VerifyList(parser);
 
 						Polygon poly;
+						unsigned poly_count = 0;
 						while(BNJ::PullParser::ST_ASCEND_LIST != parser.Pull()){
 							BNJ::GetVerify(pt2d, parser);
 							FPoint3 fp;
@@ -591,8 +595,13 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 							p.X = p3.x;
 							p.Y = p3.y;
 							poly.add(p);
+							++poly_count;
 						}
-						layers[cur_layer].polygonList.add(poly);
+						if(poly_count < 3){
+							fprintf(stderr, "Expected at least 3 points!\n");
+							exit(1);
+						}
+						layers[cur_layer].polygons.add(poly);
 					}
 
 					/* Read the interior holes. */
@@ -615,14 +624,15 @@ Slicer::Slicer(Mesh* mesh, int initial, int thickness, int layer_count, bool kee
 							p.Y = p3.y;
 							poly.add(p);
 						}
-						layers[cur_layer].polygonList.add(poly);
+						layers[cur_layer].polygons.add(poly);
 					}
+        	layers[cur_layer].z = cur_height * 1000;
 					++cur_layer;
 				}
 
 				if(cur_layer < layers.size()){
-					/* This is a problem... */
-					exit(1);
+					fprintf(stderr, "CUR LAYER IS %u, expected %u\n", cur_layer, layers.size());
+    			layers.resize(cur_layer);
 				}
 			}
 			catch(const std::exception& e){
